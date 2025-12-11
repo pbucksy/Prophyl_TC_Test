@@ -22,9 +22,16 @@ unsigned long statusTimer = 0;
 unsigned long checkUpdateTimer = 0;
 bool isInit = true;
 
+int kPinLepCS = 5;
+int kPinLepSck = 18;
+int kPinLepMiso = 19;
+int kPinLepRst = 26;
+int kPinLepPWDown = 27;
 
+//LeptonFLiR flirController(Wire,5);
 
-LeptonFLiR flirController(Wire,5);
+FlirLepton lepton(Wire, SPI, kPinLepCS, kPinLepRst, kPinLepRst);
+uint8_t vospiBuf[160*120*3] = {0};  // up to RGB888, double-buffered
 
 byte leptonChipSelectPin = 0;
 void setup() {  
@@ -42,12 +49,21 @@ void setup() {
   Wire.setClock(400000);
 
   SPI.begin();
+
+  
+
+  // wait for post-flash reset
+  
+    
+
+  SPI.begin();
+  Wire.begin();
     
   networkConnStatus = setupNetwork(99);
 
   
-  //flirController.init(LeptonFLiR_ImageStorageMode_80x60_8bpp, LeptonFLiR_TemperatureMode_Fahrenheit);
-  flirController.init(LeptonFLiR_ImageStorageMode_40x30_8bpp);  
+  //flirController.init(LeptonFLiR_ImageStorageMode_80x60_8bpp, LeptonFLiR_TemperatureMode_Celsius);
+  //flirController.init(LeptonFLiR_ImageStorageMode_40x30_8bpp);  
   
 
   // Setting use of AGC for histogram equalization (since we only have 8-bit per pixel data anyways)
@@ -55,7 +71,35 @@ void setup() {
   // Ensure telemetry is enabled
   //flirController.sys_setTelemetryEnabled(ENABLED); 
 
-  leptonChipSelectPin = flirController.getChipSelectPin();
+  
+  
+
+  Serial.println("Lepton start");  
+  assert(lepton.begin());
+
+  while (!lepton.isReady()) {
+    delay(1);
+  }
+  Serial.println("Lepton ready");
+
+  Serial.print("Lepton Serial = ");
+  Serial.print(lepton.getFlirSerial());
+  Serial.println("");
+
+  Serial.print("Lepton Part Number = ");
+  Serial.print(lepton.getFlirPartNum());
+  Serial.println("");
+
+
+  //Serial.print("LeptonSoftwareVersion: "); Serial.println(lepton.getFlirSoftwareVerison()[0]);
+
+  
+
+  assert(lepton.enableVsync());
+
+  delay(5000);
+
+  
 
   //flirController.printModuleInfo();
 
@@ -67,19 +111,31 @@ void setup() {
 
 uint32_t lastFrameNumber = -1;          // Tracks for when a new frame is available
 
+unsigned long readingFrameTimer = millis();
+
+int okFrameCntr = 0;
 
 void loop()
 {
 
   wifiWebServer.handleClient();
 
-  if(millis() - checkUpdateTimer > 10000)
+  if(millis() - checkUpdateTimer > 60000)
   {
     checkUpdateTimer = millis();
-    searchForUpdate(); 
-    debug("Lepton Chip Select pin: ");debugln(leptonChipSelectPin);
+    searchForUpdate();     
   }
+  
+  if(lepton.readVoSpi(sizeof(vospiBuf), vospiBuf))    
+  {
+    debug("Frame read OK! - ");debugln(okFrameCntr++);
+  }
+  
 
+
+   
+  
+  /*
   if (flirController.readNextFrame()) { // Read next frame and store result into internal imageData
     debugln("Reading next frame...");
 
@@ -115,6 +171,7 @@ void loop()
     if (flirController.getShouldRunFFCNormalization())
         flirController.sys_runFFCNormalization();
 
-  }   
+  }  
+        */ 
 }
 

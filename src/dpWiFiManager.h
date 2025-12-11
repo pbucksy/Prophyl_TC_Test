@@ -100,7 +100,7 @@ WiFiClient wifiClient;
 // Define the array of leds
 #define statusLedPin      2
 const uint16_t PixelCount = 4; // this example assumes 4 pixels, making it smaller will cause a failure
-NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> wsLeds(PixelCount, statusLedPin);
+//NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod> wsLeds(PixelCount, statusLedPin);
 
 
 //WebServer Related Functions
@@ -158,11 +158,11 @@ int setupNetwork(int _wsLedPin = -1)
     
     if(_wsLedPin != -1)
     {
-      
+      /*
       wsLeds.Begin();
       wsLeds.Show();
       wsLedPin = _wsLedPin;    
-
+      */
            
 
       Serial.print("Setting up Status Led. wsLedPin: "); Serial.println(wsLedPin);
@@ -893,10 +893,11 @@ void setPixel(uint8_t r, uint8_t g, uint8_t b)
       {
         
         int szorzo = 5;  
+        /*
         RgbColor _setColor(g*szorzo,r*szorzo,b*szorzo);      
         wsLeds.SetPixelColor(0, _setColor);
         wsLeds.Show();
-
+        */
       }
 
     }
