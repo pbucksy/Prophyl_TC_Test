@@ -7,10 +7,10 @@
 #include <esp_task_wdt.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <NeoPixelBus.h>
 
-#include <LeptonFLiR.h>
+//#include <LeptonFLiR.h>
 
+#include "lepton.h"
 
 
 
