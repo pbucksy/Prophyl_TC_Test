@@ -20,6 +20,7 @@ String telnetMsg = "";
 unsigned long battInfoTimer = 0;
 unsigned long statusTimer = 0;
 unsigned long checkUpdateTimer = 0;
+unsigned long readingFrameTimer = 0;
 bool isInit = true;
 
 
@@ -51,15 +52,18 @@ void setup() {
   
 
   // Setting use of AGC for histogram equalization (since we only have 8-bit per pixel data anyways)
-  //flirController.agc_setAGCEnabled(ENABLED);
+  flirController.agc_setAGCEnabled(ENABLED);
   // Ensure telemetry is enabled
-  //flirController.sys_setTelemetryEnabled(ENABLED); 
+  flirController.sys_setTelemetryEnabled(ENABLED); 
 
-  leptonChipSelectPin = flirController.getChipSelectPin();
+  debugln();debugln();debugln();
+  debug("Flir controller chip select pin: ");debugln(flirController.getChipSelectPin());
+  debugln();debugln();debugln();
 
-  //flirController.printModuleInfo();
-
+  flirController.printModuleInfo();
+  debugln();
   debugln("Begin LOOP");
+  debugln();
   
     
 }
@@ -71,50 +75,57 @@ uint32_t lastFrameNumber = -1;          // Tracks for when a new frame is availa
 void loop()
 {
 
-  wifiWebServer.handleClient();
+  //wifiWebServer.handleClient();
 
-  if(millis() - checkUpdateTimer > 10000)
+  if(false && millis() - checkUpdateTimer > 10000)
   {
     checkUpdateTimer = millis();
     searchForUpdate(); 
     debug("Lepton Chip Select pin: ");debugln(leptonChipSelectPin);
   }
 
-  if (flirController.readNextFrame()) { // Read next frame and store result into internal imageData
+  if(millis() - readingFrameTimer > 10000)
+  {
     debugln("Reading next frame...");
+  
+    if (flirController.readNextFrame()) { // Read next frame and store result into internal imageData
+      
 
-        
-    // Find the hottest spot on the frame
-    int hotVal = 0; 
-    int hotX   = 0; 
-    int hotY   = 0;
-    
+          
+      // Find the hottest spot on the frame
+      int hotVal = 0; 
+      int hotX   = 0; 
+      int hotY   = 0;
+      
 
-    for (int y = 0; y < flirController.getImageHeight(); ++y) {
-        for (int x = 0; x < flirController.getImageWidth(); ++x) {
-            int val = flirController.getImageDataRowCol(y, x);
+      for (int y = 0; y < flirController.getImageHeight(); ++y) {
+          for (int x = 0; x < flirController.getImageWidth(); ++x) {
+              int val = flirController.getImageDataRowCol(y, x);
 
-            if (val > hotVal) {
-                hotVal = val;
-                hotX = x; hotY = y;
-            }
-        }
-    }
+              if (val > hotVal) {
+                  hotVal = val;
+                  hotX = x; hotY = y;
+              }
+          }
+      }
 
-    debug("Millis: ");
-    debug(millis());
-    debug(" | ");
-    debug("Hottest point: [");
-    debug(hotX);
-    debug(",");
-    debug(hotY);
-    debugln("]");
+      debug("Millis: ");
+      debug(millis());
+      debug(" | ");
+      debug("Hottest point: [");
+      debug(hotX);
+      debug(",");
+      debug(hotY);
+      debugln("]");
 
-    
-    // Occasionally flat field correction normalization needs ran
-    if (flirController.getShouldRunFFCNormalization())
-        flirController.sys_runFFCNormalization();
+      
+      // Occasionally flat field correction normalization needs ran
+      if (flirController.getShouldRunFFCNormalization())
+          flirController.sys_runFFCNormalization();
 
-  }   
+    } 
+
+    readingFrameTimer = millis();
+  }  
 }
 

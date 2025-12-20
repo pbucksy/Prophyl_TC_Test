@@ -197,8 +197,8 @@ int setupNetwork(int _wsLedPin = -1)
     }
     if(devDelay){delay(1000);}
 
-    ssidString      = "GyapiNet_Service";   
-    passwordString  = "IoT_t3st@GyN";
+    //ssidString      = "GyapiNet_Service";   
+    //passwordString  = "IoT_t3st@GyN";
 
     //WiFi.setHostname(espHostname.c_str());
 
