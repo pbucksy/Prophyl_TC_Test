@@ -1,206 +1,302 @@
-#include "dpWiFiManager.h"
-#include <SD.h>
+#include "dpPanelManager.h"
 
 
-
-//Some stuff so that it shows it changed...
-
-static const BaseType_t core_0 = 0;
-static const BaseType_t core_1 = 1;
-
-int networkConnStatus = 0;
-
-WiFiClient tcpClient;
-
-unsigned long tcpClientTimeoutTimer = 0;
-bool toggleBool = false;
+#define isInit        false
+#define isOutputs     1
 
 
-String telnetMsg = "";
-unsigned long battInfoTimer = 0;
-unsigned long statusTimer = 0;
-unsigned long checkUpdateTimer = 0;
-unsigned long readingFrameTimer = 0;
-bool isInit = true;
+bool isEthernet = true;
 
-int kPinLepCS = 5;
-int kPinLepSck = 18;
-int kPinLepMiso = 19;
-int kPinLepRst = 26;
-int kPinLepPWDown = 27;
+bool checkHost();
+bool post_data(String sensorID, String sensorValue);
 
-//LeptonFLiR flirController(Wire,5);
+void setup() {
+  
+  Serial.begin(115200);
+  EEPROM.begin(4000);  
+  debugln();debugln();
+  debugln("In da beginning!!!!!!!!!!!!!!!!!!!!");
 
-FlirLepton lepton(Wire, SPI, kPinLepCS, kPinLepRst, kPinLepRst);
-uint8_t vospiBuf[160*120*3] = {0};  // up to RGB888, double-buffered
-
-byte leptonChipSelectPin = 0;
-void setup() {  
-
-  Serial.begin(115200);  
+ 
   delay(1000);
 
-  Serial.println();
-  Serial.println("In da beginning!");
-  
-  EEPROM.begin(EEPROMConfigSize); 
-  
-  
-  Wire.begin();
-  Wire.setClock(400000);
 
-  SPI.begin();
 
   
+  myStatusLed.red = 0;
+  myStatusLed.green = 0;
+  myStatusLed.blue = 0;
 
-  // wait for post-flash reset
+
+
+
+  initPanel(); 
   
+  if(isEthernetPresent)
+  {
+    
+    debugln(millis());
+    EthernetClient testClient;
+    Serial.print("Checking reachability___: ");
+    Serial.println(firmwareURL);
+
+    unsigned long reachabilityTimoutTimer = millis();
     
 
-  SPI.begin();
-  Wire.begin();
+    while(!testClient.connect(firmwareURL.c_str(), 80) && millis() - reachabilityTimoutTimer < 30000) {
+
+      delay(1000);
+      Serial.print(firmwareURL); Serial.println(" is OFF");
+          
+    }
+
+    if(millis() - reachabilityTimoutTimer > 30000)
+    {
+      Serial.println("Reachability Timeout Occured. Restart...");
+      delay(1000);
+      ESP.restart();
+    }
+
+    testClient.stop();
+    Serial.print(firmwareURL); Serial.println(" is reachable!");    
     
-  networkConnStatus = setupNetwork(99);
+   
+    searchForUpdate();
 
-  
-  //flirController.init(LeptonFLiR_ImageStorageMode_80x60_8bpp, LeptonFLiR_TemperatureMode_Celsius);
-  //flirController.init(LeptonFLiR_ImageStorageMode_40x30_8bpp);  
-  
 
-  // Setting use of AGC for histogram equalization (since we only have 8-bit per pixel data anyways)
-  flirController.agc_setAGCEnabled(ENABLED);
-  // Ensure telemetry is enabled
-  flirController.sys_setTelemetryEnabled(ENABLED); 
-
-<<<<<<< HEAD
-  debugln();debugln();debugln();
-  debug("Flir controller chip select pin: ");debugln(flirController.getChipSelectPin());
-  debugln();debugln();debugln();
-=======
-  
-  
-
-  Serial.println("Lepton start");  
-  assert(lepton.begin());
-
-  while (!lepton.isReady()) {
-    delay(1);
   }
-  Serial.println("Lepton ready");
-
-  Serial.print("Lepton Serial = ");
-  Serial.print(lepton.getFlirSerial());
-  Serial.println("");
-
-  Serial.print("Lepton Part Number = ");
-  Serial.print(lepton.getFlirPartNum());
-  Serial.println("");
-
-
-  //Serial.print("LeptonSoftwareVersion: "); Serial.println(lepton.getFlirSoftwareVerison()[0]);
-
-  
-
-  assert(lepton.enableVsync());
-
-  delay(5000);
-
-  
-
-  //flirController.printModuleInfo();
->>>>>>> 3c7d6c32c43421b90eb5c38f94ab4deda49f5b1c
-
-  flirController.printModuleInfo();
-  debugln();
-  debugln("Begin LOOP");
-  debugln();
-  
     
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL); //add current thread to WDT watch
+  debugln("Begin Loop!");
+  Serial.println("Begin loop!");
+
+
+  //Testing mods
+
+  /*
+  
+
+
+
+*/
+
+
 }
 
 
-uint32_t lastFrameNumber = -1;          // Tracks for when a new frame is available
 
-unsigned long readingFrameTimer = millis();
 
-int okFrameCntr = 0;
 
-void loop()
-{
 
-  //wifiWebServer.handleClient();
 
-<<<<<<< HEAD
-  if(false && millis() - checkUpdateTimer > 10000)
-=======
-  if(millis() - checkUpdateTimer > 60000)
->>>>>>> 3c7d6c32c43421b90eb5c38f94ab4deda49f5b1c
-  {
-    checkUpdateTimer = millis();
-    searchForUpdate();     
+void loop() 
+{   
+   esp_task_wdt_reset();
+  
+  if(isEthernetPresent)
+  {  
+    if(millis() - ExternalOTATimer > 20000)
+    {
+      debugln("Search for Ethernet Update!");
+      ExternalOTATimer = millis();
+      searchForUpdate();
+    }
+
   }
+    
   
-  if(lepton.readVoSpi(sizeof(vospiBuf), vospiBuf))    
-  {
-    debug("Frame read OK! - ");debugln(okFrameCntr++);
-  }
-  
+ 
 
-<<<<<<< HEAD
-  if(millis() - readingFrameTimer > 10000)
-  {
-=======
+ 
+}
 
-   
-  
-  /*
-  if (flirController.readNextFrame()) { // Read next frame and store result into internal imageData
->>>>>>> 3c7d6c32c43421b90eb5c38f94ab4deda49f5b1c
-    debugln("Reading next frame...");
-  
-    if (flirController.readNextFrame()) { // Read next frame and store result into internal imageData
+
+//#define needDebug  
+String sendRequest(String post_function, String sensorID, String sensorValue,String settingType = "-", String ioStates = "-", String message = "-")
+{      
+
+    unsigned long ethernetClientConnectTimer = millis();
+    unsigned long ethernetClientConnectTimoutTimer = millis();
+    int tryCounter = 1;
+    IPAddress restApiIP = StringToIPAddress(apiURL);
+    while(!ethPostClient.connected() && millis() - ethernetClientConnectTimer < 4000)
+    {
+      //debug("Connecting to :");debug(restApiIP);
+      ethernetClientConnectTimoutTimer = millis();
+      ethPostClient.connect(restApiIP,apiPort.toInt());
+      
+/*
       
 
-          
-      // Find the hottest spot on the frame
-      int hotVal = 0; 
-      int hotX   = 0; 
-      int hotY   = 0;
-      
-
-      for (int y = 0; y < flirController.getImageHeight(); ++y) {
-          for (int x = 0; x < flirController.getImageWidth(); ++x) {
-              int val = flirController.getImageDataRowCol(y, x);
-
-              if (val > hotVal) {
-                  hotVal = val;
-                  hotX = x; hotY = y;
-              }
-          }
+      char projectURL_char[projectUrl.length()+1];
+      projectUrl.toCharArray(projectURL_char,projectUrl.length()+1); 
+      ethClient.connect(projectURL_char,80);
+      */
+      delay(900);
+      if(!ethPostClient.connected())
+      {
+        debug(post_function);debug(" "); debug(tryCounter);debug(": Http connect status: ");debugln(ethPostClient.connected());tryCounter++;
       }
+    }
 
-      debug("Millis: ");
-      debug(millis());
-      debug(" | ");
-      debug("Hottest point: [");
-      debug(hotX);
-      debug(",");
-      debug(hotY);
-      debugln("]");
-
+    if(!ethPostClient.connected()){return "NOPE";}
+    else
+    {
+      //debug(post_function);debug(": "); debug(sensorID); debug("; ");debug(tryCounter);debug(": Http connect status: ");debugln(ethernetClient.connected());
+    }
+  
+ 
+    String chkInData = "";
+    chkInData += "post_function=";    chkInData += post_function;    
+    chkInData += "&ip_address=";      chkInData += IpAddressToString(ethIP);
+    if(sensorID !="-"){ chkInData += "&sensor_id=";       chkInData += sensorID;}
+    if(sensorValue !="-"){chkInData += "&sensor_value=";    chkInData += sensorValue;}
+    if(settingType !="-"){chkInData += "&setting_type=";    chkInData += settingType;}
+    if(ioStates !="-"){chkInData += "&io_states=";       chkInData += ioStates;}
+    if(message !="-"){chkInData += "&message=";         chkInData += message;}
+    
+    
+    if(true)
+    {
+      //ethClient.println("POST /rest/api.php HTTP/1.1");
+      ethPostClient.println("POST " + apiPath +" HTTP/1.1");
+      ethPostClient.println("Host: " + apiURL);
+      ethPostClient.println("Content-Type: application/x-www-form-urlencoded");
+      ethPostClient.println("Content-Length: "+String(chkInData.length()));
+      ethPostClient.println();
+      ethPostClient.println(chkInData);
+    }
+    if(false)
+    {
       
-      // Occasionally flat field correction normalization needs ran
-      if (flirController.getShouldRunFFCNormalization())
-          flirController.sys_runFFCNormalization();
+      //debugln("POST /rest/api.php HTTP/1.1");
+      debugln("POST " + apiPath +" HTTP/1.1");
+      debugln("Host: " + apiURL);
+      debugln("Content-Type: application/x-www-form-urlencoded");
+      debugln("Content-Length: "+String(chkInData.length()));
+      debugln();
+      debugln(chkInData);
+      debugln();
+            
+    }
+    
+    
+    //debug("\r\nPosting data: ");debugln(chkInData);
+        
+    int timeOutCntr = 0;
+    unsigned long ethernetClientTimeoutTimer = millis();  
+    
+    int headersLineCntr = 0;     
+          bool ethernetClientTimeout = false;
+          #ifdef needDebug
+            debug("Http connect status: ");debugln(ethernetClient.connected());
+          #endif
+          if(!ethPostClient.connected()){return "NOPE";}
+          #ifdef needDebug
+            debugln("Receiving headers...");
+          #endif
+          while (!ethernetClientTimeout) {
+            if((millis() - ethernetClientTimeoutTimer > 3000 && timeOutCntr<3))
+            {    
+              #ifdef needDebug
+                debugln("Timeout! Retry!");
+              #endif
+              delay(1000);
+              
+              timeOutCntr++;ethernetClientTimeoutTimer=millis();
+            }
+            else if(millis() - ethernetClientTimeoutTimer > 3000)
+            {
+              #ifdef needDebug
+                debugln("\r\n\r\nPOST REQUEST TIMEOUT!!!\r\n\r\n");
+              #endif
+              delay(1000);
+              
+              ethernetClientTimeout = true;ethPostClient.stop();              
+            }
+            String line = ethPostClient.readStringUntil('\n');            
+            #ifdef needDebug
+              if(headersLineCntr == 0){debugln(line); headersLineCntr++;}
+            #endif
+            if (line == "\r") {
+              
+              #ifdef needDebug
+                debugln("Headers received!");
+              #endif
+              break;
+            }
+          }
+    String postResponse = "";
+    while(ethPostClient.available()) 
+          {
+            char c = ethPostClient.read();
+            //debug(c);
+            postResponse += c;            
+          }
+    #ifdef needDebug
+      debugln("retVal: ");debugln(postResponse);debugln("\r\nPOSTING ENDED!\r\n####\r\n\r\n");
+    #endif
 
-<<<<<<< HEAD
-    } 
+    ethPostClient.stop();     
+    return postResponse;
+}
 
-    readingFrameTimer = millis();
-  }  
-=======
-  }  
-        */ 
->>>>>>> 3c7d6c32c43421b90eb5c38f94ab4deda49f5b1c
+bool checkHost()
+{
+  
+  String postResponse = sendRequest("CHECK_HOST","","");
+  if(postResponse.indexOf("CHECK_HOST_OK")>=0)
+  {
+    debug(postResponse);
+    debugln(" : HOST IS AVAILABLE");
+    checkHostCntr = 0;
+    return true;
+  }
+
+  
+  checkHostCntr++;
+  debug("HOST IS UNAVAILABLE - ");debug(checkHostCntr);debugln();
+  return false;
+
+}
+
+bool post_data(String sensorID, String sensorValue)
+{
+   
+  //debug("Posting SensorID : ");debug(sensorID);debug(" | ");debug("SensorValue : ");debug(sensorValue);debugln();
+  String postResponse = sendRequest("POSTING", sensorID, sensorValue);
+  if(postResponse.indexOf("NOPE")>=0 || postResponse.indexOf("Bad")>=0 || postResponse.indexOf("error")>=0)
+  {    
+    debug("Error! ");debugln(postResponse);debugln();
+    return false;
+  }    
+  
+  debugln(postResponse);
+  return true;
+  
+}
+
+void getPanelInfo()
+{
+  
+
+        debugln("Panel Info");
+        debug("STATUD LED: (");debug(myStatusLed.red);debug(", ");debug(myStatusLed.green);debug(", ");debug(myStatusLed.blue);debug(")");debugln();
+        debug("SBID: ");debugln(sbid);
+        debug("Ethernet Chip: ");debugln(Ethernet.getChip());        
+        debug("Assigned Ethernet IP Address: ");debugln(Ethernet.localIP());         
+        debug("Ethernet PHY State: ");debugln(Ethernet.phyState());
+        debug("Ethernet Link Report: ");debugln(Ethernet.linkReport());
+        debug("Ethernet Speed Report: ");debugln(Ethernet.speedReport());
+        debug("Ethernet Duplex Report: ");debugln(Ethernet.duplexReport());            
+        debug("Ethernet MAC Address: ");debugln(espEthMacAddress);
+        debug("Saved Ethernet IP Address: ");debugln(espEthIP);
+        debug("Api IP/URL: ");debugln(apiURL);
+        debug("Api port: ");debugln(apiPort);
+        debug("FW URL: ");debugln(firmwareURL);
+        debug("FW Path: ");debugln(firmwarePath);
+        debug("FW FileName: ");debugln(firmwareFilename);
+
 }
 
